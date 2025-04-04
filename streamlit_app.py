@@ -11,7 +11,14 @@ presidents = {
     "Donald Trump (2025)": datetime(2025, 1, 20),
     "Barack Obama (2009)": datetime(2009, 1, 20),
     "George W. Bush (2001)": datetime(2001, 1, 20),
-    "Bill Clinton (1993)": datetime(1993, 1, 20)
+    "Bill Clinton (1993)": datetime(1993, 1, 20),
+    "George H. W. Bush (1989)": datetime(1989, 1, 20),
+    "Ronald Reagan (1981)": datetime(1981, 1, 20),
+    "Jimmy Carter (1977)": datetime(1977, 1, 20),
+    "Gerald Ford (1974)": datetime(1974, 8, 9),
+    "Richard Nixon (1969)": datetime(1969, 1, 20),
+    "Lyndon B. Johnson (1963)": datetime(1963, 11, 22),
+    "John F. Kennedy (1961)": datetime(1961, 1, 20)
 }
 
 st.title("S&P 500 Performance by Presidential Term")
@@ -20,7 +27,7 @@ st.title("S&P 500 Performance by Presidential Term")
 selected_presidents = st.multiselect(
     "Select presidents to compare:",
     options=list(presidents.keys()),
-    default=["Joe Biden (2021)", "Donald Trump (2025)"]
+    default=["Joe Biden (2021)", "Donald Trump (2025)", "Donald Trump (2017)"]
 )
 
 # How many days into term to display?
@@ -30,23 +37,30 @@ max_days = int(365.25*4)
 @st.cache_data
 
 def get_sp500_data():
-    return yf.download("^GSPC", start="1990-01-01", auto_adjust=True)["Close"]
+    return yf.download("^GSPC", start="1961-01-01", auto_adjust=True)["Close"]
 
 sp500 = get_sp500_data()
 
 # Prepare data
 plt.figure(figsize=(10, 6))
+all_series = {}
 for pres in selected_presidents:
     start = presidents[pres]
     end = start + timedelta(days=max_days)
     data = sp500.loc[(sp500.index >= start) & (sp500.index <= end)].copy()
     data = data[:max_days]  # ensure alignment if weekends/holidays
-    if len(data) < max_days:
-        continue  # skip if not enough data
     data = data.reset_index()
     data["Day"] = (data["Date"] - start).dt.days
-    data["% Change"] = data["Close"] / data["Close"].iloc[0] * 100 - 100
-    plt.plot(data["Day"], data["% Change"], label=pres)
+    data["% Change"] = data["^GSPC"] / data["^GSPC"].iloc[0] * 100 - 100
+    all_series[pres] = data
+
+if len(all_series):
+    min_days = min(len(data) for data in all_series.values())
+    days = min(int(min_days*1.10), max_days)
+
+    for pres, data in all_series.items():
+        data = data[:days]
+        plt.plot(data["Day"], data["% Change"], label=pres)
 
 plt.axhline(0, color='gray', linestyle='--')
 plt.xlabel("Days into Term")
@@ -57,3 +71,4 @@ plt.grid(True)
 st.pyplot(plt)
 
 st.caption("Data sourced from Yahoo Finance using yfinance.")
+st.caption("Streamlit App developed with ChatGPT 4o assistance.")
